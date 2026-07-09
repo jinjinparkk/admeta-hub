@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# env / secrets
+.env
+*.local
+
+# crawled raw docs (재현 가능하므로 커밋 안 함, 필요시 예외처리)
+backend/data/raw/**/*.html
+backend/data/raw/**/*.json
+# 재생성 가능한 중간 산출물 (DB·파싱·로그). web/index.html 은 커밋(배포물).
+backend/data/*.db
+backend/data/*.log
+backend/data/parsed/
+backend/data/mappings_export.json
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+web/.env*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

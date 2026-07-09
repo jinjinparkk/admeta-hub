@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>admeta-hub · 광고 지표 표준 사전</title>
+</head>
+<body>
+<div id="app">
+<header class="hd">
+  <div class="brand"><span class="logo">◆</span> admeta<span class="dim">·hub</span></div>
+  <h1>광고 지표 표준 사전</h1>
+  <p class="lede">플랫폼마다 이름이 다른 같은 지표를 하나로 — <b>메타 <code>clicks</code></b>가 <b>구글에선 뭔지</b> 검색으로 찾으세요.</p>
+</header>
+
+<div class="search">
+  <svg class="mag" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2"/></svg>
+  <input id="q" type="search" placeholder="clicks · 비용 · impressions · ctr …" autocomplete="off" aria-label="지표 검색">
+</div>
+<div class="chips" id="chips"></div>
+
+<main id="out" aria-live="polite"></main>
+
+<footer class="ft">
+  <span id="stat"></span>
+  <span class="snap">정적 스냅샷 · 실시간 갱신은 로컬 FastAPI(<code>/api/search</code>)</span>
+</footer>
+</div>
+
+<style>
+:root{
+  --bg:#0e1016; --surf:#171a23; --surf2:#1e222e; --line:#2a2f3d;
+  --fg:#e9ebf1; --mut:#868da3; --dim:#5b6274;
+  --accent:#5ce0c6;                 /* 캐노니컬 (틸-민트) */
+  --google:#6bbf6e; --meta:#6f9dff; /* 플랫폼 */
+  --verify:#f2b95c;                 /* 사람 검수 (앰버) */
+}
+*{box-sizing:border-box}
+#app{max-width:760px;margin:0 auto;padding:40px 20px 80px;color:var(--fg);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.55}
+.hd{margin-bottom:26px}
+.brand{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-bottom:18px}
+.brand .logo{color:var(--accent)} .brand .dim{color:var(--dim)}
+h1{font-size:30px;font-weight:750;letter-spacing:-.02em;margin:0 0 8px;text-wrap:balance}
+.lede{margin:0;color:var(--mut);font-size:15px;max-width:60ch}
+.lede code,.snap code{font-family:ui-monospace,"Consolas",monospace;font-size:.9em;
+  background:var(--surf2);padding:1px 6px;border-radius:5px;color:var(--fg)}
+.search{display:flex;align-items:center;gap:10px;margin:22px 0 12px;padding:0 14px;
+  background:var(--surf);border:1px solid var(--line);border-radius:12px;
+  position:sticky;top:12px;z-index:5;transition:border-color .15s}
+.search:focus-within{border-color:var(--accent)}
+.search .mag{color:var(--mut);flex:none}
+#q{flex:1;background:none;border:0;outline:none;color:var(--fg);font-size:17px;padding:13px 0}
+#q::placeholder{color:var(--dim)}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:26px}
+.chip{font-size:13px;color:var(--mut);background:var(--surf);border:1px solid var(--line);
+  border-radius:20px;padding:5px 12px;cursor:pointer;transition:.15s;font-family:ui-monospace,monospace}
+.chip:hover{color:var(--accent);border-color:var(--accent)}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:14px;
+  padding:18px 20px;margin-bottom:14px}
+.card .top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ck{font-family:ui-monospace,"Consolas",monospace;font-size:19px;font-weight:700;
+  color:var(--accent);letter-spacing:.01em}
+.kind{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);
+  border:1px solid var(--line);border-radius:5px;padding:1px 7px}
+.cnt{margin-left:auto;font-size:12px;color:var(--dim)}
+.gloss{color:var(--mut);font-size:13.5px;margin:5px 0 4px}
+.row{display:grid;grid-template-columns:84px 1fr auto;gap:12px;align-items:start;
+  padding:11px 0;border-top:1px solid var(--line)}
+.plat{font-size:10.5px;font-weight:700;padding:4px 2px;border-radius:6px;text-align:center;
+  height:fit-content;margin-top:2px}
+.plat.google_ads{background:rgba(107,191,110,.14);color:#6bbf6e}
+.plat.sa360{background:rgba(127,206,158,.14);color:#7fce9e}
+.plat.dv360{background:rgba(167,139,250,.14);color:#a78bfa}
+.plat.cm360{background:rgba(224,168,107,.14);color:#e0a86b}
+.plat.meta{background:rgba(111,157,255,.14);color:#6f9dff}
+.plat.bing{background:rgba(88,196,196,.14);color:#58c4c4}
+.plat.linkedin{background:rgba(74,159,216,.14);color:#4a9fd8}
+.plat.pinterest{background:rgba(224,107,107,.14);color:#e06b6b}
+.fname{font-family:ui-monospace,"Consolas",monospace;font-size:14.5px;word-break:break-all}
+.fdt{font-family:ui-monospace,monospace;font-size:11px;color:var(--dim);margin-left:8px}
+.fdesc{color:var(--mut);font-size:12.5px;margin-top:2px}
+.meta-r{text-align:right;white-space:nowrap;padding-top:1px}
+.conf{font-variant-numeric:tabular-nums;font-size:12px;color:var(--mut)}
+.tag{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:5px;margin-top:4px}
+.tag.human{background:rgba(242,185,92,.14);color:var(--verify)}
+.tag.proposed{background:var(--surf2);color:var(--dim)}
+.empty{text-align:center;color:var(--dim);padding:48px 0}
+.ft{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-size:12px;color:var(--dim)}
+@media(max-width:520px){.row{grid-template-columns:80px 1fr}.meta-r{grid-column:2;text-align:left}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<script>
+const DATA = __DATA__;
+const out=document.getElementById('q'), box=document.getElementById('out');
+const qEl=document.getElementById('q'), stat=document.getElementById('stat');
+const PN={google_ads:'Google',meta:'Meta',sa360:'SA360',dv360:'DV360',cm360:'CM360',bing:'Bing',linkedin:'LinkedIn',pinterest:'Pinterest'};
+const platName=p=>PN[p]||p;
+function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+function norm(s){return (s||'').toLowerCase().replace(/[_ .]/g,'');}
+const KO={metric:0,dimension:1,derived:2};
+function scoreOf(g,q){            // 이름3 > 필드명2 > 설명1 (관련도)
+  if(!q) return 1;
+  const ql=q.toLowerCase(), qn=norm(q);
+  if(g.canonical_key.toLowerCase().includes(ql)||norm(g.canonical_key).includes(qn)) return 3;
+  if(g.fields.some(f=>f.api_name.toLowerCase().includes(ql)||norm(f.api_name).includes(qn))) return 2;
+  if((g.description||'').toLowerCase().includes(ql)||g.fields.some(f=>(f.description||'').toLowerCase().includes(ql))) return 1;
+  return 0;
+}
+function render(q){
+  const res=DATA.map(g=>[g,scoreOf(g,q)]).filter(x=>x[1]>0)
+    .sort((a,b)=> b[1]-a[1] || (KO[a[0].kind]??3)-(KO[b[0].kind]??3) || a[0].canonical_key.localeCompare(b[0].canonical_key))
+    .map(x=>x[0]);
+  const plats=new Set(); DATA.forEach(g=>g.fields.forEach(f=>plats.add(f.platform)));
+  stat.textContent=`${DATA.length}개 개념 · ${DATA.reduce((n,g)=>n+g.fields.length,0)}개 필드 · ${plats.size}개 플랫폼`;
+  if(!res.length){box.innerHTML='<div class="empty">매칭되는 표준 개념이 없어요</div>';return;}
+  box.innerHTML=res.map(g=>`
+    <section class="card">
+      <div class="top"><span class="ck">${g.canonical_key}</span>
+        <span class="kind">${g.kind||'—'}</span>
+        <span class="cnt">${g.fields.length}개 필드</span></div>
+      ${g.description?`<div class="gloss">${esc(g.description)}</div>`:''}
+      ${g.fields.map(f=>`
+        <div class="row">
+          <span class="plat ${f.platform}">${platName(f.platform)}</span>
+          <div><span class="fname">${esc(f.api_name)}</span>${f.data_type?`<span class="fdt">${esc(f.data_type)}</span>`:''}
+            <div class="fdesc">${esc(f.description)}</div></div>
+          <div class="meta-r"><div class="conf">conf ${f.confidence!=null?f.confidence.toFixed(2):'—'}</div>
+            ${f.reviewed_by==='human'?'<span class="tag human">✔ 사람 검수</span>':f.review_status==='proposed'?'<span class="tag proposed">검수 대기</span>':''}
+          </div>
+        </div>`).join('')}
+    </section>`).join('');
+}
+const chips=['clicks','spend','ctr','비용','impressions','conversions'];
+document.getElementById('chips').innerHTML=chips.map(c=>`<span class="chip">${c}</span>`).join('');
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{qEl.value=c.textContent;render(c.textContent);qEl.focus();});
+let t; qEl.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>render(qEl.value.trim()),120);});
+render('');
+</script>
+
+</body>
+</html>
