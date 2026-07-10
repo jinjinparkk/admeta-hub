@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS field_mapping (
     review_status TEXT,
     method        TEXT,
     reviewed_by   TEXT,          -- NULL=자동, 'human'=사람이 검수함(플라이휠 보존 대상)
+    transform     TEXT,          -- 값 변환 규칙 (divide_by_million 등). NULL=그대로
     PRIMARY KEY (platform, api_name)
 );
 CREATE INDEX IF NOT EXISTS idx_mapping_canonical ON field_mapping(canonical_key);
@@ -60,11 +61,12 @@ def connect(db_path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
 
 
 def _migrate(con: sqlite3.Connection) -> None:
-    """기존 DB 에 reviewed_by 컬럼이 없으면 추가."""
+    """기존 DB 에 없는 컬럼 추가."""
     cols = {r["name"] for r in con.execute("PRAGMA table_info(field_mapping)")}
-    if "reviewed_by" not in cols:
-        con.execute("ALTER TABLE field_mapping ADD COLUMN reviewed_by TEXT")
-        con.commit()
+    for col in ("reviewed_by", "transform"):
+        if col not in cols:
+            con.execute(f"ALTER TABLE field_mapping ADD COLUMN {col} TEXT")
+    con.commit()
 
 
 def seed_canonical(con: sqlite3.Connection) -> int:
@@ -103,10 +105,10 @@ def upsert_mapping(
         return
     con.execute(
         """INSERT OR REPLACE INTO field_mapping
-           (platform,api_name,canonical_key,confidence,reasoning,review_status,method,reviewed_by)
-           VALUES (?,?,?,?,?,?,?,?)""",
+           (platform,api_name,canonical_key,confidence,reasoning,review_status,method,reviewed_by,transform)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
         (platform, p.api_name, p.canonical_key, p.confidence, p.reasoning,
-         p.review_status, method, reviewed_by),
+         p.review_status, method, reviewed_by, p.transform),
     )
 
 
@@ -185,7 +187,7 @@ def search(con: sqlite3.Connection, q: str) -> list[dict]:
         ).fetchone()
         fields = con.execute(
             """SELECT m.platform, m.api_name, m.confidence, m.review_status,
-                      m.reviewed_by, f.description, f.data_type
+                      m.reviewed_by, m.transform, f.description, f.data_type
                FROM field_mapping m JOIN platform_field f
                  ON m.platform=f.platform AND m.api_name=f.api_name
                WHERE m.canonical_key=? AND m.review_status != 'rejected'

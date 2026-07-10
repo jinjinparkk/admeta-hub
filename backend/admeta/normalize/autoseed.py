@@ -28,12 +28,17 @@ TOKENS: dict[str, list[str]] = {
     "CPC": ["cpc", "averagecpc", "avgcpc", "costperclick"],
     "CPM": ["cpm", "averagecpm", "avgcpm"],
     "CTR": ["ctr", "averagectr", "clickthroughrate", "ctrrate"],
-    "CONVERSIONS": ["conversions", "totalconversions"],
-    "REACH": ["reach"],
+    "CONVERSIONS": ["conversions", "totalconversions",
+                    "attributedconversions14d"],  # Amazon: 14일 어트리뷰션 창(리포트 표준)
+    "REACH": ["reach", "cumulativereach",         # Amazon
+              "uniquereachimpressionreach"],      # DV360: METRIC_UNIQUE_REACH_IMPRESSION_REACH
     "FREQUENCY": ["frequency", "averagefrequency"],
     "REVENUE": ["revenue", "revenuemicros", "conversionsvalue", "conversionvalue"],
-    "VIDEO_VIEWS": ["videoviews", "videototalviews"],
+    "VIDEO_VIEWS": ["videoviews", "videototalviews",
+                    "videoplayactions"],          # TikTok
     "LINK_CLICKS": ["outboundclicks", "urlclicks"],
+    "CVR": ["cvr", "conversionrate"],             # TikTok/Amazon/Pinterest
+    "ROAS": ["roas", "conversionsvaluepercost"],  # Amazon 'roas' / Google conversions_value_per_cost
     "CAMPAIGN_ID": ["campaignid"],
     "CAMPAIGN_NAME": ["campaignname"],
     "AD_GROUP_ID": ["adgroupid", "adsetid"],
@@ -49,7 +54,14 @@ TOKENS: dict[str, list[str]] = {
 # 토큰 → 개념 역인덱스
 _TOK2KEY = {tok: key for key, toks in TOKENS.items() for tok in toks}
 
-NEW_PLATFORMS = ["sa360", "dv360", "cm360", "bing", "linkedin", "pinterest",
+# micro 단위 필드 → ÷1e6 변환 필요 (정규화 이름 기준)
+_MICRO_TOKENS = {"costmicros", "revenuemicros", "billedchargelocalmicro",
+                 "spendinmicrodollar"}
+
+# canonical.py 시드가 있는 google_ads/meta 도 포함 — 시드에 빠진 이름 정확일치
+# 매핑(meta ctr, google conversions_value_per_cost 등)을 여기서 메운다.
+NEW_PLATFORMS = ["google_ads", "meta",
+                 "sa360", "dv360", "cm360", "bing", "linkedin", "pinterest",
                  "x", "tiktok", "amazon", "ttd"]
 
 
@@ -90,11 +102,18 @@ def seed_platform(con, platform: str, parsed_dir="data/parsed") -> list[tuple[st
             best[key] = f["api_name"]
     applied = []
     for key, api in best.items():
+        # micro 단위 필드는 ÷1e6 변환 기록 (cost_micros, billed_charge_local_micro 등)
+        stripped = api
+        for pre in _PREFIXES:
+            if api.lower().startswith(pre):
+                stripped = api[len(pre):]
+                break
+        transform = "divide_by_million" if _norm(stripped) in _MICRO_TOKENS else None
         con.execute(
             """INSERT OR REPLACE INTO field_mapping
-               (platform,api_name,canonical_key,confidence,reasoning,review_status,method,reviewed_by)
-               VALUES (?,?,?,1.0,'오토시드: 필드명 정확일치','approved','autoseed','human')""",
-            (platform, api, key),
+               (platform,api_name,canonical_key,confidence,reasoning,review_status,method,reviewed_by,transform)
+               VALUES (?,?,?,1.0,'오토시드: 필드명 정확일치','approved','autoseed','human',?)""",
+            (platform, api, key, transform),
         )
         applied.append((key, api))
     con.commit()

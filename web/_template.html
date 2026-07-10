@@ -83,6 +83,8 @@ h1{font-size:30px;font-weight:750;letter-spacing:-.02em;margin:0 0 8px;text-wrap
 .plat.ttd{background:rgba(94,234,212,.14);color:#5eead4}
 .fname{font-family:ui-monospace,"Consolas",monospace;font-size:14.5px;word-break:break-all}
 .fdt{font-family:ui-monospace,monospace;font-size:11px;color:var(--dim);margin-left:8px}
+.xf{font-family:ui-monospace,monospace;font-size:10.5px;font-weight:700;margin-left:8px;
+  padding:1px 6px;border-radius:5px;background:rgba(250,204,21,.12);color:#facc15}
 .fdesc{color:var(--mut);font-size:12.5px;margin-top:2px}
 .meta-r{text-align:right;white-space:nowrap;padding-top:1px}
 .conf{font-variant-numeric:tabular-nums;font-size:12px;color:var(--mut)}
@@ -106,6 +108,8 @@ const platName=p=>PN[p]||p;
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 
 function norm(s){return (s||'').toLowerCase().replace(/[_ .]/g,'');}
+// 값 변환 규칙 → 짧은 라벨 (micro 단위 등 "그대로 비교하면 안 되는" 필드 표시)
+function xfLabel(t){return ({divide_by_million:'÷1e6'})[t]||t;}
 const KO={metric:0,dimension:1,derived:2};
 function scoreOf(g,q){            // 이름3 > 필드명2 > 설명1 (관련도)
   if(!q) return 1;
@@ -131,7 +135,7 @@ function render(q){
       ${g.fields.map(f=>`
         <div class="row">
           <span class="plat ${f.platform}">${platName(f.platform)}</span>
-          <div><span class="fname">${esc(f.api_name)}</span>${f.data_type?`<span class="fdt">${esc(f.data_type)}</span>`:''}
+          <div><span class="fname">${esc(f.api_name)}</span>${f.data_type?`<span class="fdt">${esc(f.data_type)}</span>`:''}${f.transform?`<span class="xf" title="${esc(f.transform)}">${xfLabel(f.transform)}</span>`:''}
             <div class="fdesc">${esc(f.description)}</div></div>
           <div class="meta-r"><div class="conf">conf ${f.confidence!=null?f.confidence.toFixed(2):'—'}</div>
             ${f.reviewed_by==='human'?'<span class="tag human">✔ 사람 검수</span>':f.review_status==='proposed'?'<span class="tag proposed">검수 대기</span>':''}

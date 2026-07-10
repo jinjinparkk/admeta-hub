@@ -44,16 +44,16 @@ def seed_authoritative(con) -> int:
     LINK_CLICKS 0.5) DB 는 필드당 한 개념만 저장 → 신뢰도 높은 쪽을 채택.
     사람이 이미 검수한 필드는 건드리지 않는다.
     """
-    best: dict[tuple[str, str], tuple[float, str]] = {}
+    best: dict[tuple[str, str], tuple[float, str, str | None]] = {}
     for cf in canonical.ALL_FIELDS:
         for mp in cf.mappings:
             plat = _ALIAS.get(mp.platform, mp.platform)
             key = (plat, mp.api_name)
             if key not in best or mp.confidence > best[key][0]:
-                best[key] = (mp.confidence, cf.key)
+                best[key] = (mp.confidence, cf.key, mp.transform)
 
     n = 0
-    for (plat, api), (conf, ck) in best.items():
+    for (plat, api), (conf, ck, transform) in best.items():
         if not con.execute(
             "SELECT 1 FROM platform_field WHERE platform=? AND api_name=?", (plat, api)
         ).fetchone():
@@ -63,9 +63,9 @@ def seed_authoritative(con) -> int:
         con.execute(
             """INSERT OR REPLACE INTO field_mapping
                (platform,api_name,canonical_key,confidence,reasoning,
-                review_status,method,reviewed_by)
-               VALUES (?,?,?,?,'canonical.py 검증 매핑','approved','seed','seed')""",
-            (plat, api, ck, conf),
+                review_status,method,reviewed_by,transform)
+               VALUES (?,?,?,?,'canonical.py 검증 매핑','approved','seed','seed',?)""",
+            (plat, api, ck, conf, transform),
         )
         n += 1
     con.commit()
