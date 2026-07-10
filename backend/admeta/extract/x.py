@@ -35,14 +35,22 @@ def _find_col(header: list[str], keywords) -> int | None:
 
 
 def _header_row(rows) -> tuple[int, list[str]] | None:
-    """이름열+설명열을 가진 첫 행을 헤더로 판정. (index, 소문자 헤더) 반환."""
+    """이름열을 가진 첫 행을 헤더로 판정. (index, 소문자 헤더) 반환.
+
+    메트릭 표는 설명열도 필수. 세그먼트 표(Segmentation Type)는 설명열이 없어
+    이름열만으로 허용한다.
+    """
     for ri, r in enumerate(rows):
         cells = [_clean(c.get_text()).lower() for c in r.find_all(["th", "td"])]
         if not any(cells):
             continue
         if any("derived" in c for c in cells):      # 파생 메트릭 표 → 스킵
             return None
-        if _find_col(cells, _NAME_KW) is not None and _find_col(cells, _DESC_KW) is not None:
+        name_i = _find_col(cells, _NAME_KW)
+        if name_i is None:
+            continue
+        is_dim = "segmentation type" in cells[name_i]
+        if is_dim or _find_col(cells, _DESC_KW) is not None:
             return ri, cells
     return None
 
@@ -61,15 +69,15 @@ def parse(html: str, source_url: str | None = None) -> list[ExtractedField]:
         name_i = _find_col(header, _NAME_KW)
         desc_i = _find_col(header, _DESC_KW)
         type_i = _find_col(header, _TYPE_KW)
-        # 세그먼트 표(Segmentation Type)는 dimension, 그 외는 metric
+        # 세그먼트 표(Segmentation Type)는 dimension(설명열 없음), 그 외는 metric
         is_dim = "segmentation type" in header[name_i]
 
         for tr in rows[hdr_i + 1:]:
             cells = tr.find_all(["td", "th"])
-            if len(cells) <= max(name_i, desc_i):
+            if len(cells) <= name_i or (desc_i is not None and len(cells) <= desc_i):
                 continue
             name = _clean(cells[name_i].get_text())
-            desc = _clean(cells[desc_i].get_text())
+            desc = _clean(cells[desc_i].get_text()) if desc_i is not None else ""
             if not name or len(name) > 80 or name in seen:
                 continue
             seen.add(name)
