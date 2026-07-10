@@ -77,6 +77,10 @@ h1{font-size:30px;font-weight:750;letter-spacing:-.02em;margin:0 0 8px;text-wrap
 .plat.bing{background:rgba(88,196,196,.14);color:#58c4c4}
 .plat.linkedin{background:rgba(74,159,216,.14);color:#4a9fd8}
 .plat.pinterest{background:rgba(224,107,107,.14);color:#e06b6b}
+.plat.x{background:rgba(200,200,210,.14);color:#c8c8d2}
+.plat.tiktok{background:rgba(105,201,208,.14);color:#69c9d0}
+.plat.amazon{background:rgba(255,153,51,.14);color:#f93}
+.plat.ttd{background:rgba(94,234,212,.14);color:#5eead4}
 .fname{font-family:ui-monospace,"Consolas",monospace;font-size:14.5px;word-break:break-all}
 .fdt{font-family:ui-monospace,monospace;font-size:11px;color:var(--dim);margin-left:8px}
 .fdesc{color:var(--mut);font-size:12.5px;margin-top:2px}
@@ -97,7 +101,7 @@ h1{font-size:30px;font-weight:750;letter-spacing:-.02em;margin:0 0 8px;text-wrap
 const DATA = __DATA__;
 const out=document.getElementById('q'), box=document.getElementById('out');
 const qEl=document.getElementById('q'), stat=document.getElementById('stat');
-const PN={google_ads:'Google',meta:'Meta',sa360:'SA360',dv360:'DV360',cm360:'CM360',bing:'Bing',linkedin:'LinkedIn',pinterest:'Pinterest'};
+const PN={google_ads:'Google',meta:'Meta',sa360:'SA360',dv360:'DV360',cm360:'CM360',bing:'Bing',linkedin:'LinkedIn',pinterest:'Pinterest',x:'X',tiktok:'TikTok',amazon:'Amazon',ttd:'TTD'};
 const platName=p=>PN[p]||p;
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 

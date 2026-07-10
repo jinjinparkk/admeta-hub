@@ -10,11 +10,20 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from admeta.extract import google, meta, table
+from admeta.extract import google, meta, supermetrics, table, x
 from admeta.models import ExtractedField
 from admeta.platforms import get_platform
 
-# 플랫폼 → 파서 함수 (parse 방식이 'parser'/'llm' 이어도 실제 결정적 파서로 처리)
+# 파서 키 → 함수. Source.parser 로 소스별 오버라이드할 때 이 키를 쓴다.
+PARSER_FUNCS = {
+    "google": google.parse,
+    "meta": meta.parse,
+    "table": table.parse,
+    "x": x.parse,
+    "supermetrics": supermetrics.parse,
+}
+
+# 플랫폼 → 기본 파서 함수 (parse 방식이 'parser'/'llm' 이어도 실제 결정적 파서로 처리)
 PARSERS = {
     "google_ads": google.parse,
     "sa360": google.parse,     # 구글 devsite 동일 구조 재활용
@@ -25,6 +34,11 @@ PARSERS = {
     "pinterest": table.parse,
     "cm360": table.parse,
     "dv360": table.parse,
+    "x": x.parse,               # 헤더가 표 안쪽에 있는 X 전용 파서
+    # supermetrics 미러 (1st-party 가 SPA/비공개)
+    "tiktok": supermetrics.parse,
+    "amazon": supermetrics.parse,
+    "ttd": supermetrics.parse,
 }
 
 
@@ -41,11 +55,14 @@ def extract_platform(
         raise FileNotFoundError(f"원문 없음: {manifest_path} — 먼저 크롤하세요")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
+    # 소스별 파서 오버라이드 (예: pinterest glossary=table + supermetrics 미러)
+    src_parser = {s.slug: PARSER_FUNCS[s.parser] for s in spec.sources if s.parser}
+
     fields: list[ExtractedField] = []
     seen: set[str] = set()
     for rec in manifest:
         html = Path(rec["path"]).read_text(encoding="utf-8")
-        for f in parser(html, rec["url"]):
+        for f in src_parser.get(rec["slug"], parser)(html, rec["url"]):
             if f.api_name in seen:      # 페이지 간 중복 제거
                 continue
             seen.add(f.api_name)

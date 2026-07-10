@@ -21,10 +21,15 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Source:
-    """크롤 대상 문서 하나. slug = 저장 파일명."""
+    """크롤 대상 문서 하나. slug = 저장 파일명.
+
+    parser — 플랫폼 기본 파서와 다른 파서를 쓰는 소스면 파서 키 지정
+    (예: pinterest 는 1st-party glossary=table + supermetrics 미러=supermetrics).
+    """
 
     slug: str
     url: str
+    parser: str = ""
 
 
 @dataclass(frozen=True)
@@ -172,6 +177,13 @@ PLATFORMS: dict[str, PlatformSpec] = {
                 "ads-reporting",
                 "https://developers.pinterest.com/docs/analytics-and-reports/ads-reporting/",
             ),
+            # 1st-party glossary 는 UI 지표 21개뿐(spend/conversions 없음) →
+            # API 필드 전체는 supermetrics 미러로 보강 (delivery_metrics API 는 토큰 필요)
+            Source(
+                "supermetrics-fields",
+                "https://docs.supermetrics.com/docs/pinterest-ads-fields",
+                parser="supermetrics",
+            ),
         ),
         active=True,
         notes="display_name(UI) vs API enum 2계층. delivery_metrics/get 로 JSON 정의도 가능.",
@@ -184,40 +196,57 @@ PLATFORMS: dict[str, PlatformSpec] = {
         sources=(
             Source("analytics", "https://docs.x.com/x-ads-api/analytics"),
         ),
-        notes="developer.x.com 은 402. docs.x.com 써야 함. 메트릭 그룹별.",
+        active=True,
+        notes="developer.x.com 은 402. docs.x.com 써야 함. 표 헤더가 안쪽 행 → x.py 전용 파서.",
     ),
-    # --- Wave 2: browser -----------------------------------------------------
+    # --- Wave 2: 1st-party 가 SPA/비공개 → supermetrics 미러(static) ----------
+    # 필드명은 플랫폼 API 원 이름 그대로 미러링됨 → 매핑 용도 충분.
     "tiktok": PlatformSpec(
         key="tiktok",
         name="TikTok Ads",
-        fetch="browser",
-        parse="llm",
+        fetch="static",
+        parse="parser",
         sources=(
-            Source("reporting", "https://business-api.tiktok.com/portal/docs?id=1738864739862530"),
+            Source(
+                "supermetrics-fields",
+                "https://docs.supermetrics.com/docs/tiktok-ads-fields",
+                parser="supermetrics",
+            ),
         ),
-        notes="SPA. fallback=GitHub tiktok/tiktok-business-api-sdk OpenAPI.",
+        active=True,
+        notes="1st-party(business-api.tiktok.com/portal/docs)는 SPA → 미러 사용. "
+              "fallback=GitHub tiktok/tiktok-business-api-sdk OpenAPI.",
     ),
     "amazon": PlatformSpec(
         key="amazon",
         name="Amazon Ads",
-        fetch="browser",
-        parse="llm",
+        fetch="static",
+        parse="parser",
         sources=(
             Source(
-                "reporting-v3",
-                "https://advertising.amazon.com/API/docs/en-us/guides/reporting/v3/overview",
+                "supermetrics-fields",
+                "https://docs.supermetrics.com/docs/amazon-ads-fields",
+                parser="supermetrics",
             ),
         ),
-        notes="SPA. 광고상품(SP/SB/SD)·버전(v2/v3)별 메트릭 상이. fallback=GitHub amzn/ads-advanced-tools-docs.",
+        active=True,
+        notes="1st-party(advertising.amazon.com/API/docs)는 SPA → 미러 사용. "
+              "fallback=GitHub amzn/ads-advanced-tools-docs.",
     ),
-    # --- Wave 3: manual ------------------------------------------------------
     "ttd": PlatformSpec(
         key="ttd",
         name="The Trade Desk",
-        fetch="manual",
-        parse="manual",
-        sources=(),
-        notes="1st-party 공개문서 없음(파트너 로그인). 시드=docs.supermetrics.com/docs/the-trade-desk-fields.",
+        fetch="static",
+        parse="parser",
+        sources=(
+            Source(
+                "supermetrics-fields",
+                "https://docs.supermetrics.com/docs/the-trade-desk-fields",
+                parser="supermetrics",
+            ),
+        ),
+        active=True,
+        notes="1st-party 공개문서 없음(파트너 로그인 SPA) → 미러 사용.",
     ),
 }
 

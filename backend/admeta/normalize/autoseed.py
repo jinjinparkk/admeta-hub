@@ -18,17 +18,22 @@ from admeta.db import store
 
 # 개념 → 필드명 토큰(정규화: 소문자·영숫자만). 정확 일치만 채택(오탐 최소화).
 TOKENS: dict[str, list[str]] = {
-    "CLICKS": ["clicks"],
+    "CLICKS": ["clicks", "pinclicks"],
     "IMPRESSIONS": ["impressions"],
-    "SPEND": ["spend", "cost", "costmicros", "costinlocalcurrency", "spendinmicrodollar", "totalspend"],
+    "SPEND": ["spend", "cost", "costmicros", "costinlocalcurrency", "spendinmicrodollar", "totalspend",
+              "billedchargelocalmicro",   # X: micro 단위 과금액
+              "advertisercostusd",        # TTD
+              "mediacostadvertiser",      # DV360: METRIC_MEDIA_COST_ADVERTISER
+              "mediacost"],               # CM360: mediaCost
     "CPC": ["cpc", "averagecpc", "avgcpc", "costperclick"],
     "CPM": ["cpm", "averagecpm", "avgcpm"],
-    "CTR": ["ctr", "averagectr", "clickthroughrate"],
+    "CTR": ["ctr", "averagectr", "clickthroughrate", "ctrrate"],
     "CONVERSIONS": ["conversions", "totalconversions"],
     "REACH": ["reach"],
     "FREQUENCY": ["frequency", "averagefrequency"],
     "REVENUE": ["revenue", "revenuemicros", "conversionsvalue", "conversionvalue"],
-    "VIDEO_VIEWS": ["videoviews"],
+    "VIDEO_VIEWS": ["videoviews", "videototalviews"],
+    "LINK_CLICKS": ["outboundclicks", "urlclicks"],
     "CAMPAIGN_ID": ["campaignid"],
     "CAMPAIGN_NAME": ["campaignname"],
     "AD_GROUP_ID": ["adgroupid", "adsetid"],
@@ -44,7 +49,8 @@ TOKENS: dict[str, list[str]] = {
 # 토큰 → 개념 역인덱스
 _TOK2KEY = {tok: key for key, toks in TOKENS.items() for tok in toks}
 
-NEW_PLATFORMS = ["sa360", "dv360", "cm360", "bing", "linkedin", "pinterest"]
+NEW_PLATFORMS = ["sa360", "dv360", "cm360", "bing", "linkedin", "pinterest",
+                 "x", "tiktok", "amazon", "ttd"]
 
 
 def _norm(s: str) -> str:
