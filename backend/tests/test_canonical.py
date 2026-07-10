@@ -52,7 +52,11 @@ def test_currency_metrics_have_unit():
 
 
 def test_platform_keys():
-    assert C.platform_keys() == {"meta", "google"}
+    """canonical 매핑의 플랫폼 키는 레지스트리 키(또는 google/meta 별칭)여야 함."""
+    from admeta.platforms import PLATFORMS
+    allowed = set(PLATFORMS) | {"google", "meta"}   # 'google'은 google_ads 별칭
+    unknown = C.platform_keys() - allowed
+    assert not unknown, f"레지스트리에 없는 플랫폼 키: {unknown}"
 
 
 def test_get_is_case_insensitive():

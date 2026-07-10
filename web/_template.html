@@ -85,6 +85,8 @@ h1{font-size:30px;font-weight:750;letter-spacing:-.02em;margin:0 0 8px;text-wrap
 .fdt{font-family:ui-monospace,monospace;font-size:11px;color:var(--dim);margin-left:8px}
 .xf{font-family:ui-monospace,monospace;font-size:10.5px;font-weight:700;margin-left:8px;
   padding:1px 6px;border-radius:5px;background:rgba(250,204,21,.12);color:#facc15}
+.card.un{border-style:dashed;opacity:.92}
+.ck.dimmed{color:var(--mut);font-size:15px}
 .fdesc{color:var(--mut);font-size:12.5px;margin-top:2px}
 .meta-r{text-align:right;white-space:nowrap;padding-top:1px}
 .conf{font-variant-numeric:tabular-nums;font-size:12px;color:var(--mut)}
@@ -101,6 +103,7 @@ h1{font-size:30px;font-weight:750;letter-spacing:-.02em;margin:0 0 8px;text-wrap
 
 <script>
 const DATA = __DATA__;
+const UDATA = __UDATA__;   // 아직 표준 개념에 매핑 안 된 원천 필드 (이름 매칭용)
 const out=document.getElementById('q'), box=document.getElementById('out');
 const qEl=document.getElementById('q'), stat=document.getElementById('stat');
 const PN={google_ads:'Google',meta:'Meta',sa360:'SA360',dv360:'DV360',cm360:'CM360',bing:'Bing',linkedin:'LinkedIn',pinterest:'Pinterest',x:'X',tiktok:'TikTok',amazon:'Amazon',ttd:'TTD'};
@@ -119,13 +122,38 @@ function scoreOf(g,q){            // 이름3 > 필드명2 > 설명1 (관련도)
   if((g.description||'').toLowerCase().includes(ql)||g.fields.some(f=>(f.description||'').toLowerCase().includes(ql))) return 1;
   return 0;
 }
+// 미매핑 원천 필드 검색 — 이름 매칭만(설명 매칭은 노이즈), 최대 30개
+function searchUnmapped(q){
+  if(!q) return [];
+  const ql=q.toLowerCase(), qn=norm(q);
+  return UDATA.filter(f=>f.api_name.toLowerCase().includes(ql)||norm(f.api_name).includes(qn))
+    .sort((a,b)=>a.api_name.length-b.api_name.length).slice(0,30);
+}
+function unmappedHtml(rows){
+  if(!rows.length) return '';
+  return `
+    <section class="card un">
+      <div class="top"><span class="ck dimmed">미표준화 원천 필드</span>
+        <span class="kind">unmapped</span>
+        <span class="cnt">${rows.length}개${rows.length===30?'+':''}</span></div>
+      <div class="gloss">아직 표준 개념에 매핑되지 않은 플랫폼 원본 필드예요.</div>
+      ${rows.map(f=>`
+        <div class="row">
+          <span class="plat ${f.platform}">${platName(f.platform)}</span>
+          <div><span class="fname">${esc(f.api_name)}</span>${f.data_type?`<span class="fdt">${esc(f.data_type)}</span>`:''}
+            <div class="fdesc">${esc(f.description)}</div></div>
+          <div class="meta-r"></div>
+        </div>`).join('')}
+    </section>`;
+}
 function render(q){
   const res=DATA.map(g=>[g,scoreOf(g,q)]).filter(x=>x[1]>0)
     .sort((a,b)=> b[1]-a[1] || (KO[a[0].kind]??3)-(KO[b[0].kind]??3) || a[0].canonical_key.localeCompare(b[0].canonical_key))
     .map(x=>x[0]);
+  const un=searchUnmapped(q);
   const plats=new Set(); DATA.forEach(g=>g.fields.forEach(f=>plats.add(f.platform)));
-  stat.textContent=`${DATA.length}개 개념 · ${DATA.reduce((n,g)=>n+g.fields.length,0)}개 필드 · ${plats.size}개 플랫폼`;
-  if(!res.length){box.innerHTML='<div class="empty">매칭되는 표준 개념이 없어요</div>';return;}
+  stat.textContent=`${DATA.length}개 개념 · ${DATA.reduce((n,g)=>n+g.fields.length,0)}개 표준 필드 · 원천 ${(DATA.reduce((n,g)=>n+g.fields.length,0)+UDATA.length).toLocaleString()}개 · ${plats.size}개 플랫폼`;
+  if(!res.length&&!un.length){box.innerHTML='<div class="empty">매칭되는 필드가 없어요</div>';return;}
   box.innerHTML=res.map(g=>`
     <section class="card">
       <div class="top"><span class="ck">${g.canonical_key}</span>
@@ -141,7 +169,7 @@ function render(q){
             ${f.reviewed_by==='human'?'<span class="tag human">✔ 사람 검수</span>':f.review_status==='proposed'?'<span class="tag proposed">검수 대기</span>':''}
           </div>
         </div>`).join('')}
-    </section>`).join('');
+    </section>`).join('') + unmappedHtml(un);
 }
 const chips=['clicks','spend','ctr','비용','impressions','conversions'];
 document.getElementById('chips').innerHTML=chips.map(c=>`<span class="chip">${c}</span>`).join('');

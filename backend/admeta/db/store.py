@@ -208,3 +208,25 @@ def search(con: sqlite3.Connection, q: str) -> list[dict]:
     for g in out:
         g.pop("_score", None)
     return out
+
+
+def search_unmapped(con: sqlite3.Connection, q: str, limit: int = 30) -> list[dict]:
+    """아직 표준 개념에 매핑 안 된 원천 필드 중 검색어와 이름이 매칭되는 것.
+
+    전체 필드의 90%+ 가 미매핑(니치 필드)이라 개념 검색만으론 안 보인다
+    (예: bid_strategy_type). 이름 매칭만 쓰고 개수를 제한해 노이즈를 막는다.
+    """
+    like = f"%{q}%"
+    nlike = "%" + q.lower().replace("_", "").replace(" ", "").replace(".", "") + "%"
+    rows = con.execute(
+        """SELECT f.platform, f.api_name, f.description, f.data_type
+           FROM platform_field f LEFT JOIN field_mapping m
+             ON f.platform=m.platform AND f.api_name=m.api_name
+           WHERE (m.canonical_key IS NULL OR m.review_status='rejected')
+             AND (f.api_name LIKE ? OR
+                  REPLACE(REPLACE(REPLACE(LOWER(f.api_name),'_',''),'.',''),' ','') LIKE ?)
+           ORDER BY LENGTH(f.api_name), f.platform
+           LIMIT ?""",
+        (like, nlike, limit),
+    ).fetchall()
+    return [dict(r) for r in rows]

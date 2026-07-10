@@ -44,6 +44,7 @@ def _load_data(con) -> list[dict]:
                     "platform": f["platform"], "api_name": f["api_name"],
                     "confidence": f["confidence"], "review_status": f["review_status"],
                     "reviewed_by": f["reviewed_by"],
+                    "transform": f["transform"],
                     "description": (f["description"] or "")[:180],
                     "data_type": _clean_dt(f["data_type"]),
                 } for f in grp["fields"]],
@@ -53,19 +54,38 @@ def _load_data(con) -> list[dict]:
     return data
 
 
+def _load_unmapped(con) -> list[dict]:
+    """미매핑 원천 필드 전체 — 정적 검색에서 이름 매칭용 (설명은 짧게)."""
+    rows = con.execute(
+        """SELECT f.platform, f.api_name, f.description, f.data_type
+           FROM platform_field f LEFT JOIN field_mapping m
+             ON f.platform=m.platform AND f.api_name=m.api_name
+           WHERE m.canonical_key IS NULL OR m.review_status='rejected'
+           ORDER BY f.platform, f.api_name""")
+    return [{
+        "platform": r["platform"], "api_name": r["api_name"],
+        "description": (r["description"] or "")[:140],
+        "data_type": _clean_dt(r["data_type"]),
+    } for r in rows]
+
+
 def main() -> int:
     con = store.connect(ROOT / "backend" / "data" / "admeta.db")
     data = _load_data(con)
+    unmapped = _load_unmapped(con)
     con.close()
 
     template = (ROOT / "web" / "_template.html").read_text(encoding="utf-8")
-    html = template.replace("__DATA__", json.dumps(data, ensure_ascii=False))
+    html = (template
+            .replace("__DATA__", json.dumps(data, ensure_ascii=False))
+            .replace("__UDATA__", json.dumps(unmapped, ensure_ascii=False)))
     out = ROOT / "web" / "index.html"
     out.write_text(html, encoding="utf-8")
 
     plats = {f["platform"] for g in data for f in g["fields"]}
     print(f"생성: {out}  ({len(html):,} bytes, {len(data)}개념 "
-          f"{sum(len(g['fields']) for g in data)}필드 {len(plats)}플랫폼)")
+          f"{sum(len(g['fields']) for g in data)}필드(+미매핑 {len(unmapped):,}) "
+          f"{len(plats)}플랫폼)")
     return 0
 
 

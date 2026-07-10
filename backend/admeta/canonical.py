@@ -161,6 +161,13 @@ DIMENSIONS: list[CanonicalField] = [
     CanonicalField("OBJECTIVE", Kind.DIMENSION, DataType.ENUM, "캠페인 목표/유형.",
                    mappings=(_m("meta", "objective"),
                              _m("google", "campaign.advertising_channel_type"))),
+    CanonicalField("BID_STRATEGY", Kind.DIMENSION, DataType.ENUM,
+                   "입찰 전략 유형 (수동 CPC / 타겟 CPA / 최대 전환 등).",
+                   mappings=(_m("google", "campaign.bidding_strategy_type"),
+                             _m("dv360", "FILTER_BID_STRATEGY_TYPE_NAME"),
+                             _m("cm360", "paidSearchBidStrategy"),
+                             _m("pinterest", "ad_group_bid_type"),
+                             _m("tiktok", "bid_type"))),
 ]
 
 # --------------------------------------------------------------------------

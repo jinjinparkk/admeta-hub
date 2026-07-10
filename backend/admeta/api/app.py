@@ -22,9 +22,11 @@ def api_search(q: str = "") -> JSONResponse:
     con = store.connect()
     try:
         results = store.search(con, q.strip()) if q.strip() else []
+        unmapped = store.search_unmapped(con, q.strip()) if q.strip() else []
     finally:
         con.close()
-    return JSONResponse({"query": q, "count": len(results), "results": results})
+    return JSONResponse({"query": q, "count": len(results),
+                         "results": results, "unmapped": unmapped})
 
 
 @app.get("/", response_class=HTMLResponse)
